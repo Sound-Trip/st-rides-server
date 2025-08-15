@@ -1,9 +1,9 @@
 import { Injectable, BadRequestException, NotFoundException } from "@nestjs/common"
-import type { PrismaService } from "../prisma/prisma.service"
+import { PrismaService } from "../prisma/prisma.service"
 import { RideStatus, RideType, VehicleType, PaymentMethod } from "@prisma/client"
-import type { MatchingService } from "./matching.service"
-import type { NotificationsService } from "../notifications/notifications.service"
-import type { WalletService } from "../wallet/wallet.service"
+import { MatchingService } from "./matching.service"
+import { NotificationsService } from "../notifications/notifications.service"
+import { WalletService } from "../wallet/wallet.service"
 import { v4 as uuidv4 } from "uuid"
 
 @Injectable()
@@ -322,7 +322,7 @@ export class RidesService {
     })
 
     if (ratings.length > 0) {
-      const averageRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
+      const averageRating = ratings.reduce((sum, r) => sum + r.rating!, 0) / ratings.length
 
       await this.prisma.driverProfile.update({
         where: { userId: driverId },

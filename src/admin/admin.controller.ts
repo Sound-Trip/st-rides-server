@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Body, Param, UseGuards } from "@nestjs/common"
-import type { AdminService } from "./admin.service"
+import { AdminService } from "./admin.service"
 import { Roles } from "../common/decorators/roles.decorator"
 import { RolesGuard } from "../common/guards/roles.guard"
 import { CurrentUser } from "../common/decorators/current-user.decorator"

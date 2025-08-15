@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from "@nestjs/common"
-import type { RoutesService } from "./routes.service"
+import { RoutesService } from "./routes.service"
 import { Roles } from "../common/decorators/roles.decorator"
 import { RolesGuard } from "../common/guards/roles.guard"
 import { UserRole, type VehicleType } from "@prisma/client"

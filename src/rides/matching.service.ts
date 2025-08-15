@@ -1,10 +1,10 @@
 import { Injectable } from "@nestjs/common"
-import type { PrismaService } from "../prisma/prisma.service"
+import { PrismaService } from "../prisma/prisma.service"
 import { type VehicleType, RideStatus, RideType } from "@prisma/client"
 
 @Injectable()
 export class MatchingService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async findMatchingRide(routeId: string, pickupTime: Date) {
     // Look for existing shared rides within 30 minutes of pickup time
@@ -21,19 +21,16 @@ export class MatchingService {
           gte: startTime,
           lte: endTime,
         },
-        passengers: {
-          // Check if ride has space (assuming max 3 passengers for Keke)
-          _count: {
-            lt: 3,
-          },
-        },
       },
       include: {
         passengers: true,
       },
-    })
+    });
 
-    return existingRide
+    if (existingRide && existingRide.passengers.length < 3) {
+      return existingRide;
+    }
+    return null;
   }
 
   async findAvailableDriver(routeId: string, vehicleType: VehicleType, pickupTime: Date) {
@@ -45,17 +42,14 @@ export class MatchingService {
         isBlocked: false,
         user: {
           isActive: true,
-        },
-        // Check if driver doesn't have conflicting rides
-        user: {
           ridesAsDriver: {
             none: {
               status: {
                 in: [RideStatus.SCHEDULED, RideStatus.ONGOING],
               },
               pickupTime: {
-                gte: new Date(pickupTime.getTime() - 2 * 60 * 60 * 1000), // 2 hours before
-                lte: new Date(pickupTime.getTime() + 2 * 60 * 60 * 1000), // 2 hours after
+                gte: new Date(pickupTime.getTime() - 2 * 60 * 60 * 1000),
+                lte: new Date(pickupTime.getTime() + 2 * 60 * 60 * 1000),
               },
             },
           },
@@ -86,7 +80,7 @@ export class MatchingService {
         routeId: driver.assignedRouteId,
         vehicleType: driver.vehicleType,
         status: RideStatus.SCHEDULED,
-        driverId: null, // Unassigned rides
+        // driverId: null // Unassigned rides WAS "driverId: NULL"
         pickupTime: {
           gte: new Date(),
           lte: new Date(Date.now() + 24 * 60 * 60 * 1000), // Next 24 hours

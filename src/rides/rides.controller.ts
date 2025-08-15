@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards } from "@nestjs/common"
-import type { RidesService } from "./rides.service"
-import type { MatchingService } from "./matching.service"
+import { RidesService } from "./rides.service"
+import { MatchingService } from "./matching.service"
 import { Roles } from "../common/decorators/roles.decorator"
 import { RolesGuard } from "../common/guards/roles.guard"
 import { UserRole, type VehicleType, type PaymentMethod, type RideStatus } from "@prisma/client"

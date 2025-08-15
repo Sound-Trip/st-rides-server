@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common"
-import type { PrismaService } from "../prisma/prisma.service"
-import { UserRole, MaintenanceStatus } from "@prisma/client"
-import type { NotificationsService } from "../notifications/notifications.service"
+import { PrismaService } from "../prisma/prisma.service"
+import { UserRole, MaintenanceStatus, RideStatus } from "@prisma/client"
+import { NotificationsService } from "../notifications/notifications.service"
 
 @Injectable()
 export class AdminService {
@@ -187,7 +187,7 @@ export class AdminService {
     const skip = (page - 1) * limit
 
     const where = {
-      ...(status && { status }),
+      ...(status && { status: status as RideStatus }),
     }
 
     const [rides, total] = await Promise.all([

@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from "@nestjs/common"
-import type { PrismaService } from "../prisma/prisma.service"
+import { PrismaService } from "../prisma/prisma.service"
 import { TransactionType, TransactionStatus } from "@prisma/client"
 import { Decimal } from "@prisma/client/runtime/library"
 
@@ -29,6 +29,9 @@ export class WalletService {
           driverProfile: true,
         },
       })
+      if (!user) {
+        throw new BadRequestException("User not found")
+      }
 
       if (user.passengerProfile) {
         await tx.passengerProfile.update({
@@ -64,6 +67,9 @@ export class WalletService {
           driverProfile: true,
         },
       })
+      if (!user) {
+        throw new BadRequestException("User not found")
+      }
 
       const currentBalance = user.passengerProfile?.walletBalance || user.driverProfile?.walletBalance || new Decimal(0)
 
@@ -182,6 +188,9 @@ export class WalletService {
         driverProfile: true,
       },
     })
+    if (!user) {
+      throw new BadRequestException("User not found")
+    }
 
     const balance = user.passengerProfile?.walletBalance || user.driverProfile?.walletBalance || new Decimal(0)
     const tokens = user.passengerProfile?.earnedTokens || 0

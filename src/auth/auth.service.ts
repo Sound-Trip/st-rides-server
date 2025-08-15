@@ -1,8 +1,8 @@
 import { Injectable, UnauthorizedException, BadRequestException } from "@nestjs/common"
-import type { JwtService } from "@nestjs/jwt"
-import type { PrismaService } from "../prisma/prisma.service"
-import type { OtpService } from "./otp.service"
-import * as bcrypt from "bcrypt"
+import { JwtService } from "@nestjs/jwt"
+import { PrismaService } from "../prisma/prisma.service"
+import { OtpService } from "./otp.service"
+import * as bcrypt from "bcryptjs"
 import { UserRole } from "@prisma/client"
 
 @Injectable()
@@ -11,7 +11,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private otpService: OtpService,
-  ) {}
+  ) { }
 
   async registerPassenger(data: {
     firstName: string
@@ -92,6 +92,10 @@ export class AuthService {
         driverProfile: true,
       },
     })
+
+    if (!user) {
+      throw new UnauthorizedException("User not found")
+    }
 
     const payload = {
       sub: user.id,

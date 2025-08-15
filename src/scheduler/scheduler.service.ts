@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common"
 import { Cron, CronExpression } from "@nestjs/schedule"
-import type { PrismaService } from "../prisma/prisma.service"
-import type { NotificationsService } from "../notifications/notifications.service"
-import type { WalletService } from "../wallet/wallet.service"
+import { PrismaService } from "../prisma/prisma.service"
+import { NotificationsService } from "../notifications/notifications.service"
+import { WalletService } from "../wallet/wallet.service"
 import { MaintenanceStatus } from "@prisma/client"
 
 @Injectable()
@@ -11,7 +11,7 @@ export class SchedulerService {
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
     private walletService: WalletService,
-  ) {}
+  ) { }
 
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
   async checkMaintenanceDue() {
@@ -36,7 +36,12 @@ export class SchedulerService {
     })
 
     for (const driver of driversWithMaintenanceDue) {
-      await this.notificationsService.sendMaintenanceReminderNotification(driver.userId, driver.maintenanceDueDate)
+      if (driver.maintenanceDueDate) {
+        await this.notificationsService.sendMaintenanceReminderNotification(
+          driver.userId,
+          driver.maintenanceDueDate
+        )
+      }
     }
   }
 
@@ -74,7 +79,7 @@ export class SchedulerService {
     })
   }
 
-  @Cron(CronExpression.EVERY_SUNDAY_AT_NOON)
+  @Cron("0 12 * * 0") // Every Sunday at 12 PM
   async sendWeeklyEarningsSummary() {
     console.log("Sending weekly earnings summary...")
 

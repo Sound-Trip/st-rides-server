@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common"
-import type { PrismaService } from "../prisma/prisma.service"
-import type { ConfigService } from "@nestjs/config"
+import { PrismaService } from "../prisma/prisma.service"
+import { ConfigService } from "@nestjs/config"
 
 @Injectable()
 export class OtpService {
@@ -30,9 +30,9 @@ export class OtpService {
     })
 
     // Send OTP via SMS or Email (implement with your preferred service)
-    if (user.phone) {
-      await this.sendSmsOtp(user.phone, code)
-    } else if (user.email) {
+    if (user?.phone) {
+      await this.sendSmsOtp(user?.phone, code)
+    } else if (user?.email) {
       await this.sendEmailOtp(user.email, code)
     }
   }
