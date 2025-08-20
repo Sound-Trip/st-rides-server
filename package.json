@@ -19,7 +19,7 @@
     "@nestjs/microservices": "latest",
     "@nestjs/passport": "latest",
     "@nestjs/platform-express": "latest",
-    "@nestjs/schedule": "latest",
+    "@nestjs/schedule": "^6.0.0",
     "@nestjs/swagger": "latest",
     "@nestjs/throttler": "latest",
     "@nestjs/websockets": "latest",

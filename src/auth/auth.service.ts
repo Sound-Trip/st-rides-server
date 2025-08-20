@@ -13,77 +13,35 @@ export class AuthService {
     private otpService: OtpService,
   ) { }
 
-  async registerPassenger(data: {
-    firstName: string
-    lastName: string
-    phone?: string
-    email?: string
-  }) {
-    if (!data.phone && !data.email) {
-      throw new BadRequestException("Phone or email is required")
-    }
-
-    const existingUser = await this.prisma.user.findFirst({
-      where: {
-        OR: [{ phone: data.phone }, { email: data.email }],
-      },
-    })
-
-    if (existingUser) {
-      throw new BadRequestException("User already exists")
-    }
-
-    const user = await this.prisma.user.create({
-      data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone: data.phone,
-        email: data.email,
-        role: UserRole.PASSENGER,
-        passengerProfile: {
-          create: {},
-        },
-      },
-      include: {
-        passengerProfile: true,
-      },
-    })
-
-    // Send OTP
-    await this.otpService.generateAndSendOtp(user.id, "registration")
-
-    return {
-      message: "Registration successful. OTP sent.",
-      userId: user.id,
-    }
-  }
-
-  async loginWithOtp(identifier: string) {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        OR: [{ phone: identifier }, { email: identifier }],
-        isActive: true,
-      },
-    })
+  //Driver & Passenger Auth Process
+  async loginWithOtp(identifier: string, role: UserRole) {
+    let user = await this.prisma.user.findFirst({
+      where: { phone: identifier, role, isActive: true },
+    });
 
     if (!user) {
-      throw new UnauthorizedException("User not found")
+      if (role === UserRole.DRIVER) {
+        throw new UnauthorizedException("Driver account not found. Contact the company.");
+      }
+      // passengers get auto-temp account
+      user = await this.prisma.user.create({
+        data: {
+          phone: identifier,
+          firstName: "TEMP",
+          lastName: "TEMP",
+          role: UserRole.PASSENGER,
+          isActive: false,
+        },
+      });
     }
 
-    await this.otpService.generateAndSendOtp(user.id, "login")
-
-    return {
-      message: "OTP sent successfully",
-      userId: user.id,
-    }
+    await this.otpService.generateAndSendOtp(user.id, "login");
+    return { message: "OTP sent successfully", userId: user.id };
   }
 
   async verifyOtp(userId: string, code: string, type: string) {
     const isValid = await this.otpService.verifyOtp(userId, code, type)
-
-    if (!isValid) {
-      throw new UnauthorizedException("Invalid or expired OTP")
-    }
+    if (!isValid) throw new UnauthorizedException("Invalid or expired OTP");
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -92,18 +50,17 @@ export class AuthService {
         driverProfile: true,
       },
     })
+    // const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
-    if (!user) {
-      throw new UnauthorizedException("User not found")
+    if (!user) throw new UnauthorizedException("User not found");
+
+    // If it's a temporary user, prompt for profile completion
+    if (!user.firstName || user.firstName === "TEMP") {
+      return { requiresProfileCompletion: true, userId: user.id };
     }
 
-    const payload = {
-      sub: user.id,
-      role: user.role,
-      phone: user.phone,
-      email: user.email,
-    }
-
+    // Otherwise, grant session
+    const payload = { sub: user.id, role: user.role, phone: user.phone };
     return {
       access_token: this.jwtService.sign(payload),
       user: {
@@ -118,8 +75,48 @@ export class AuthService {
     }
   }
 
+  async completeProfile(dto: { userId: string; firstName: string; lastName: string }) {
+    // Step 1: fetch the user with profile
+    const existing = await this.prisma.user.findUnique({
+      where: { id: dto.userId },
+      include: { passengerProfile: true, driverProfile: true },
+    });
+
+    if (!existing) throw new UnauthorizedException("User not found");
+
+    // Step 2: update safely
+    const user = await this.prisma.user.update({
+      where: { id: dto.userId },
+      data: {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        isActive: true,
+        passengerProfile: existing.passengerProfile ? undefined : { create: {} },
+      },
+      include: { passengerProfile: true, driverProfile: true },
+    });
+
+    // Step 3: return consistent response
+    const payload = { sub: user.id, role: user.role, phone: user.phone };
+    return {
+      access_token: this.jwtService.sign(payload),
+      message: "Profile completed",
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        email: user.email,
+        role: user.role,
+        profile: user.passengerProfile || user.driverProfile,
+      },
+    };
+  }
+
+
+  //Admin Auth Process
   async adminLogin(email: string, password: string) {
-    const admin = await this.prisma.adminUser.findUnique({
+    const admin = await this.prisma.adminUser.findFirst({
       where: { email, isActive: true },
     })
 
@@ -166,3 +163,57 @@ export class AuthService {
     return user
   }
 }
+
+
+
+
+
+
+
+
+
+
+// async registerPassenger(data: {
+//   firstName: string
+//   lastName: string
+//   phone?: string
+//   email?: string
+// }) {
+//   if (!data.phone && !data.email) {
+//     throw new BadRequestException("Phone or email is required")
+//   }
+
+//   const existingUser = await this.prisma.user.findFirst({
+//     where: {
+//       OR: [{ phone: data.phone }, { email: data.email }],
+//     },
+//   })
+
+//   if (existingUser) {
+//     throw new BadRequestException("User already exists")
+//   }
+
+//   const user = await this.prisma.user.create({
+//     data: {
+//       firstName: data.firstName,
+//       lastName: data.lastName,
+//       phone: data.phone,
+//       email: data.email,
+//       role: UserRole.PASSENGER,
+//       passengerProfile: {
+//         create: {},
+//       },
+//     },
+//     include: {
+//       passengerProfile: true,
+//     },
+//   })
+
+//   // Send OTP
+//   await this.otpService.generateAndSendOtp(user.id, "registration")
+
+//   return {
+//     message: "Registration successful. OTP sent.",
+//     userId: user.id,
+//   }
+// }

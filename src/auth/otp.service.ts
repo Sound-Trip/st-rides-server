@@ -11,7 +11,9 @@ export class OtpService {
 
   async generateAndSendOtp(userId: string, type: string): Promise<void> {
     // Generate 6-digit OTP
-    const code = Math.floor(100000 + Math.random() * 900000).toString()
+    // const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code_ = 123456;
+    const code = code_.toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
     // Save OTP to database

@@ -1,3 +1,11 @@
 Run Prisma migrations to create all the tables from schema.prisma:
 
 npx prisma migrate dev
+npx prisma migrate dev --name init
+
+
+to erase and reset old data with new one:
+npx prisma migrate reset
+
+To View A GUI schema of your tables:
+npx prisma studio
