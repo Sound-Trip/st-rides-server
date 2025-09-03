@@ -34,6 +34,7 @@
     "passport": "latest",
     "passport-jwt": "latest",
     "prisma": "latest",
+    "qrcode": "^1.5.4",
     "react": "^18",
     "react-dom": "^18",
     "react-resizable-panels": "^2.1.7",

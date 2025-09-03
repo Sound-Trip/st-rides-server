@@ -1,73 +1,38 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from "@nestjs/common"
-import { RidesService } from "./rides.service"
-import { MatchingService } from "./matching.service"
-import { Roles } from "../common/decorators/roles.decorator"
-import { RolesGuard } from "../common/guards/roles.guard"
-import { UserRole, type VehicleType, type PaymentMethod, type RideStatus } from "@prisma/client"
+import { Body, Controller, Param, Post, Get, UseGuards } from '@nestjs/common';
+import { RidesService } from './rides.service';
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard"
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
-@Controller("rides")
-@UseGuards(RolesGuard)
+@Controller('rides')
 export class RidesController {
-  constructor(
-    private ridesService: RidesService,
-    private matchingService: MatchingService,
-  ) {}
+  constructor(private svc: RidesService) { }
 
-  @Post("book")
-  @Roles(UserRole.PASSENGER)
-  async bookRide(
-    user: any,
-    @Body() bookingData: {
-      routeId: string;
-      pickupTime: string;
-      vehicleType: VehicleType;
-      paymentMethod: PaymentMethod;
-    },
+  @UseGuards(JwtAuthGuard)
+  @Post(':requestId/accept')
+  accept(
+    @CurrentUser('id') driverId: string,
+    @Param('requestId') requestId: string
   ) {
-    return this.ridesService.bookRide(user.id, {
-      ...bookingData,
-      pickupTime: new Date(bookingData.pickupTime),
-    })
+    return this.svc.acceptRequestAsDriver(driverId, requestId);
   }
 
-  @Post(":scanCode/start")
-  @Roles(UserRole.DRIVER)
-  async startRide(user: any, @Param('scanCode') scanCode: string) {
-    return this.ridesService.startRide(user.id, scanCode)
+  @UseGuards(JwtAuthGuard)
+  @Post(':rideId/start')
+  start(
+    @CurrentUser('id') driverId: string,
+    @Param('rideId') rideId: string, 
+    @Body() body: { code: string }
+  ) {
+    return this.svc.startRide(driverId, rideId, body.code);
   }
 
-  @Post(":id/complete")
-  @Roles(UserRole.DRIVER)
-  async completeRide(user: any, @Param('id') rideId: string) {
-    return this.ridesService.completeRide(user.id, rideId)
+  @Post(':rideId/complete')
+  complete(@Param('rideId') rideId: string) {
+    return this.svc.completeRide(rideId);
   }
 
-  @Post(":id/cancel")
-  async cancelRide(user: any, @Param('id') rideId: string, @Body() cancelData: { reason?: string }) {
-    return this.ridesService.cancelRide(user.id, rideId, cancelData.reason)
-  }
-
-  @Post(":id/rate")
-  @Roles(UserRole.PASSENGER)
-  async rateRide(user: any, @Param('id') rideId: string, @Body() ratingData: { rating: number; feedback?: string }) {
-    return this.ridesService.rateRide(user.id, rideId, ratingData.rating, ratingData.feedback)
-  }
-
-  @Get("passenger")
-  @Roles(UserRole.PASSENGER)
-  async getPassengerRides(user: any, @Query('status') status?: RideStatus) {
-    return this.ridesService.getPassengerRides(user.id, status)
-  }
-
-  @Get("driver")
-  @Roles(UserRole.DRIVER)
-  async getDriverRides(user: any, @Query('status') status?: RideStatus) {
-    return this.ridesService.getDriverRides(user.id, status)
-  }
-
-  @Get("driver/recommendations")
-  @Roles(UserRole.DRIVER)
-  async getDriverRecommendations(user: any) {
-    return this.matchingService.getDriverRecommendations(user.id)
+  @Get(':rideId/code')
+  getCode(@Param('rideId') rideId: string) {
+    return this.svc.getCode(rideId);
   }
 }

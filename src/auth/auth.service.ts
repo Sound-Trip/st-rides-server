@@ -14,7 +14,7 @@ export class AuthService {
   ) { }
 
   //Driver & Passenger Auth Process
-  async loginWithOtp(identifier: string, role: UserRole) {
+  async loginWithOtp_old(identifier: string, role: UserRole) {
     let user = await this.prisma.user.findFirst({
       where: { phone: identifier, role, isActive: true },
     });
@@ -37,6 +37,69 @@ export class AuthService {
 
     await this.otpService.generateAndSendOtp(user.id, "login");
     return { message: "OTP sent successfully", userId: user.id };
+  }
+
+  async loginWithOtp(identifier: string, role: UserRole) {
+    // Step 1: Find the user
+    let user = await this.prisma.user.findFirst({
+      where: { phone: identifier, role },
+    });
+
+    if (!user) {
+      if (role === UserRole.DRIVER) {
+        throw new UnauthorizedException("Driver account not found. Contact the company.");
+      }
+
+      // Passenger: create a temporary account
+      user = await this.prisma.user.create({
+        data: {
+          phone: identifier,
+          firstName: "TEMP",
+          lastName: "TEMP",
+          role: UserRole.PASSENGER,
+          isActive: false,
+        },
+      });
+    }
+
+    // Step 2: Check for an existing valid OTP
+    const now = new Date();
+    const existingOtp = await this.prisma.otpCode.findFirst({
+      where: {
+        userId: user.id,
+        type: "login",
+        isUsed: false,
+        expiresAt: { gt: now },
+      },
+      orderBy: { expiresAt: "desc" },
+    });
+
+    if (existingOtp) {
+      // Calculate time left in seconds
+      const timeLeft = Math.floor((existingOtp.expiresAt.getTime() - now.getTime()) / 1000);
+      return {
+        message: "OTP already sent",
+        userId: user.id,
+        expiresIn: timeLeft,
+      };
+    }
+
+    // Step 3: Generate a new OTP
+    await this.otpService.generateAndSendOtp(user.id, "login");
+
+    // Step 4: Fetch the OTP we just generated to get expiresAt
+    const newOtp = await this.prisma.otpCode.findFirst({
+      where: { userId: user.id, type: "login", isUsed: false },
+      orderBy: { expiresAt: "desc" },
+    });
+
+    const timeLeft = newOtp ? Math.floor((newOtp.expiresAt.getTime() - now.getTime()) / 1000) : 600;
+
+    return {
+      message: "OTP sent successfully",
+      userId: user.id,
+      expiresIn: timeLeft,
+    };
   }
 
   async verifyOtp(userId: string, code: string, type: string) {
