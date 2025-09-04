@@ -51,4 +51,21 @@ export class SchedulesService {
 
         return { pendingCount: pending.length, schedules };
     }
+
+    async getAvailableKekeSchedules() {
+        return this.prisma.driverSchedule.findMany({
+            where: {
+                vehicleType: 'KEKE',
+                isActive: true,
+                seatsFilled: { lt: 4 }, // assume KEKE capacity = 4 unless overridden
+                departureTime: { gte: new Date() },
+            },
+            include: {
+                driver: { select: { firstName: true, lastName: true, phone: true } },
+                startJunction: true,
+                endJunction: true,
+            },
+            orderBy: { departureTime: 'asc' },
+        });
+    }
 }

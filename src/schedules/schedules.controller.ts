@@ -6,14 +6,14 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('schedules')
 export class SchedulesController {
-  constructor(private svc: SchedulesService) {}
+  constructor(private svc: SchedulesService) { }
 
   @UseGuards(JwtAuthGuard)
   @Post()
   create(
     @CurrentUser('id') userId: string,
     @Body() dto: CreateScheduleDto
-) {
+  ) {
     return this.svc.create(userId, dto);
   }
 
@@ -24,5 +24,13 @@ export class SchedulesController {
     @Query('windowMinutes') w = '30',
   ) {
     return this.svc.smartScan(s, e, parseInt(w, 10));
+  }
+
+  
+  // 🚏 Passengers — View KEKE schedules
+  @UseGuards(JwtAuthGuard)
+  @Get('keke/schedules')
+  getKekeSchedules() {
+    return this.svc.getAvailableKekeSchedules();
   }
 }
