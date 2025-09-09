@@ -1,7 +1,7 @@
 import { Controller, Post, Body } from "@nestjs/common"
 import { AuthService } from "./auth.service"
 import { Public } from "./decorators/public.decorator"
-import { AdminLoginDto, LoginDto, RegisterDto, VerifyOtpDto } from "./dto/auth.dto"
+import { AdminLoginDto, LoginDto, RegisterDto, VerifyOtpDto, CreateDriverDto } from "./dto/auth.dto"
 
 @Controller("auth")
 export class AuthController {
@@ -29,5 +29,11 @@ export class AuthController {
   @Post("admin/login")
   async adminLogin(@Body() loginDto: AdminLoginDto) {
     return this.authService.adminLogin(loginDto.email, loginDto.password)
+  }
+
+  @Public() // or protect with an AdminGuard instead
+  @Post("admin/create-driver")
+  async createDriver(@Body() dto: CreateDriverDto) {
+    return this.authService.createDriver(dto);
   }
 }

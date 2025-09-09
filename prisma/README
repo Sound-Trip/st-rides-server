@@ -9,3 +9,8 @@ npx prisma migrate reset
 
 To View A GUI schema of your tables:
 npx prisma studio
+
+
+
+This will regenerate @prisma/client with the latest schema definitions in node_modules.
+npx prisma generate

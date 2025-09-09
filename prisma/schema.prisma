@@ -234,6 +234,8 @@ model Ride {
   requestedStartLng Float?
   requestedEndLat   Float?
   requestedEndLng   Float?
+  startJunctionId String?
+  endJunctionId   String?
 
   // Validation codes
   scanCode  String @unique
@@ -268,6 +270,10 @@ model RidePassenger {
   rated         Boolean       @default(false)
   rating        Int?
   feedback      String?
+
+   // passenger-specific validation codes
+  ticketCode String
+  scanCode   String @unique
 
   // Relations
   ride      Ride @relation(fields: [rideId], references: [id])

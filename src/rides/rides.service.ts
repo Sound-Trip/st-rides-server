@@ -7,7 +7,7 @@ function generateShortCode() {
   return (1000 + Math.floor(Math.random() * 9000)).toString();
 }
 function generateScanCode() {
-  return crypto.randomUUID();
+  return randomInt(4).toString();
 }
 
 @Injectable()
@@ -53,17 +53,17 @@ export class RidesService {
       };
 
       // attach route for KEKE if known
-      if (req.vehicleType === 'KEKE') {
-        const route = await tx.route.findFirst({
-          where: {
-            vehicleType: 'KEKE',
-            startJunctionId: req.startJunctionId!,
-            endJunctionId: req.endJunctionId!,
-            isActive: true,
-          },
-        });
-        if (route) createRideData.routeId = route.id;
-      }
+      // if (req.vehicleType === 'KEKE') {
+      //   const route = await tx.route.findFirst({
+      //     where: {
+      //       vehicleType: 'KEKE',
+      //       startJunctionId: req.startJunctionId!,
+      //       endJunctionId: req.endJunctionId!,
+      //       isActive: true,
+      //     },
+      //   });
+      //   if (route) createRideData.routeId = route.id;
+      // }
 
       const ride = await tx.ride.create({ data: createRideData });
 
@@ -144,38 +144,109 @@ export class RidesService {
     // TODO: emit `ride.cancelled` event and notify passengers
   }
 
-  async confirmRide(passengerId: string, rideId: string) {
-    const ride = await this.prisma.ride.findUnique({
-      where: { id: rideId },
+  // async confirmRide_old(passengerId: string, rideId: string) {
+  //   const ride = await this.prisma.ride.findUnique({
+  //     where: { id: rideId },
+  //     include: { passengers: true },
+  //   });
+  //   if (!ride) throw new NotFoundException('Ride not found');
+  //   if (ride.status !== 'PENDING' && ride.status !== 'SCHEDULED') {
+  //     throw new BadRequestException('Ride cannot be confirmed');
+  //   }
+  //   if (ride.seatsFilled >= (ride.capacity ?? 4)) {
+  //     throw new BadRequestException('No seats left');
+  //   }
+
+  //   const existing = ride.passengers.find((p) => p.passengerId === passengerId);
+  //   if (existing) throw new BadRequestException('Already confirmed');
+
+  //   await this.prisma.$transaction([
+  //     this.prisma.ridePassenger.create({
+  //       data: {
+  //         rideId,
+  //         passengerId,
+  //         paymentMethod: 'CASH',
+  //         pricePaid: ride.totalAmount, // assume cash for now
+  //       },
+  //     }),
+  //     this.prisma.ride.update({
+  //       where: { id: rideId },
+  //       data: { seatsFilled: { increment: 1 } },
+  //     }),
+  //   ]);
+
+  //   // TODO: generate QR/shortCode binding for validation
+  //   return { success: true, shortCode: ride.shortCode, scanCode: ride.scanCode };
+  // }
+
+  async confirmRide(passengerId: string, scheduleId: string) {
+    const schedule = await this.prisma.driverSchedule.findUnique({
+      where: { id: scheduleId },
+    });
+    if (!schedule) throw new NotFoundException("Schedule not found");
+
+    // find or create ride linked to this schedule
+    let ride = await this.prisma.ride.findFirst({
+      where: { scheduledByDriver: true, routeId: schedule.id },
       include: { passengers: true },
     });
-    if (!ride) throw new NotFoundException('Ride not found');
-    if (ride.status !== 'PENDING' && ride.status !== 'SCHEDULED') {
-      throw new BadRequestException('Ride cannot be confirmed');
+
+    if (!ride) {
+      ride = await this.prisma.ride.create({
+        data: {
+          driverId: schedule.driverId,
+          vehicleType: schedule.vehicleType,
+          rideType: "SHARED",
+          capacity: schedule.capacity,
+          seatsFilled: 0,
+          scanCode: "null",
+          shortCode: "null",
+          scheduledByDriver: true,
+          pickupTime: schedule.departureTime,
+          startJunctionId: schedule.startJunctionId,
+          endJunctionId: schedule.endJunctionId,
+        },
+        include: { passengers: true },
+      });
     }
+
+    // seat validation
     if (ride.seatsFilled >= (ride.capacity ?? 4)) {
-      throw new BadRequestException('No seats left');
+      throw new BadRequestException("No seats left");
     }
 
-    const existing = ride.passengers.find((p) => p.passengerId === passengerId);
-    if (existing) throw new BadRequestException('Already confirmed');
+    // prevent double booking
+    const already = ride.passengers.find((p) => p.passengerId === passengerId);
+    if (already) throw new BadRequestException("Already confirmed");
 
-    await this.prisma.$transaction([
+    // generate passenger-specific ticket code
+    const ticketCode = String(Math.floor(1000 + Math.random() * 9000)); // 4 digit
+    const scanCode = crypto.randomUUID();
+
+    const result = await this.prisma.$transaction([
       this.prisma.ridePassenger.create({
         data: {
-          rideId,
+          rideId: ride.id,
           passengerId,
-          paymentMethod: 'CASH',
-          pricePaid: ride.totalAmount, // assume cash for now
+          paymentMethod: "CASH",
+          pricePaid: ride.totalAmount,
+          ticketCode,   // passenger-specific code
+          scanCode,     // passenger-specific QR code
         },
       }),
       this.prisma.ride.update({
-        where: { id: rideId },
+        where: { id: ride.id },
         data: { seatsFilled: { increment: 1 } },
       }),
     ]);
 
-    // TODO: generate QR/shortCode binding for validation
-    return { success: true, shortCode: ride.shortCode, scanCode: ride.scanCode };
+    return {
+      success: true,
+      rideId: ride.id,
+      passengerTicket: {
+        ticketCode,
+        scanCode,
+      },
+    };
   }
 }

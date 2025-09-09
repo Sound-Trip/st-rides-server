@@ -1,4 +1,4 @@
-import { UserRole } from '@prisma/client';
+import type { UserRole, VehicleType } from '@prisma/client';
 import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
 
 
@@ -44,4 +44,31 @@ export class AdminLoginDto {
 
   @IsNotEmpty({ message: 'Property "password" is required, but missing' })
   password: string
+}
+
+
+export class CreateDriverDto {
+  @IsNotEmpty({ message: 'Property "phone" is required, but missing' })
+  phone: string;
+
+  @IsNotEmpty({ message: 'Property "firstName" is required, but missing' })
+  firstName: string;
+
+  @IsNotEmpty({ message: 'Property "lastName" is required, but missing' })
+  lastName: string;
+
+  @IsNotEmpty({ message: 'Property "vehicleType" is required, but missing' })
+  vehicleType: VehicleType;
+
+  @IsNotEmpty({ message: 'Property "vehicleModel" is required, but missing' })
+  vehicleModel: string;
+
+  @IsNotEmpty({ message: 'Property "plateNumber" is required, but missing' })
+  plateNumber: string;
+
+  @IsNotEmpty({ message: 'Property "licenseNumber" is required, but missing' })
+  licenseNumber: string;
+
+  @IsNotEmpty({ message: 'Property "isCompanyVehicle" is required, but missing' })
+  isCompanyVehicle?: boolean;
 }

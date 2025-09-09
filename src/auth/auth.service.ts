@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service"
 import { OtpService } from "./otp.service"
 import * as bcrypt from "bcryptjs"
 import { UserRole } from "@prisma/client"
+import { CreateDriverDto } from "./dto/auth.dto"
 
 @Injectable()
 export class AuthService {
@@ -224,6 +225,33 @@ export class AuthService {
     }
 
     return user
+  }
+
+  async createDriver(dto: CreateDriverDto) {
+    const existing = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    if (existing) throw new BadRequestException("Driver with this phone already exists");
+
+    const user = await this.prisma.user.create({
+      data: {
+        phone: dto.phone,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        role: UserRole.DRIVER,
+        isActive: true,
+        driverProfile: {
+          create: {
+            vehicleType: dto.vehicleType,
+            vehicleModel: dto.vehicleModel,
+            plateNumber: dto.plateNumber,
+            licenseNumber: dto.licenseNumber,
+            isCompanyVehicle: dto.isCompanyVehicle ?? false,
+          },
+        },
+      },
+      include: { driverProfile: true },
+    });
+
+    return { message: "Driver created successfully", user };
   }
 }
 

@@ -37,11 +37,6 @@ export class RidesController {
     return this.svc.completeRide(rideId);
   }
 
-  @Get(':rideId/code')
-  getCode(@Param('rideId') rideId: string) {
-    return this.svc.getCode(rideId);
-  }
-
   @UseGuards(JwtAuthGuard)
   @Post(':rideId/cancel')
   cancelRide(
@@ -50,6 +45,11 @@ export class RidesController {
     @Body('reason') reason: string,
   ) {
     return this.svc.cancelRide(driverId, rideId, reason);
+  }
+
+  @Get(':rideId/code')
+  getCode(@Param('rideId') rideId: string) {
+    return this.svc.getCode(rideId);
   }
 
   // 🎫 Passengers — Confirm Ride (lock seat)
@@ -61,4 +61,8 @@ export class RidesController {
   ) {
     return this.svc.confirmRide(passengerId, rideId);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':rideId/rate')
+  rateRide() {}
 }

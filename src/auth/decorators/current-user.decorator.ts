@@ -6,8 +6,8 @@ export const CurrentUser = createParamDecorator(
     const user = request.user; // populated by JwtAuthGuard
 
     // Map `sub` to `id` for convenience
-    const normalizedUser = { ...user, id: user?.sub };
+    // const normalizedUser = { ...user, id: user?.sub };
 
-    return data ? normalizedUser?.[data] : normalizedUser;
+    return data ? user?.[data] : user;
   },
 );
