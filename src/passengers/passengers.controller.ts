@@ -43,11 +43,16 @@ export class PassengersController {
 
     @UseGuards(JwtAuthGuard)
     @Post('chatter')
-    chatterRide() { }
+    chatterRide(
+        @CurrentUser('id') passengerId: string,
+        @Body() dto: CreateRequestDto
+    ) {
+        return this.svc.chatter(passengerId, dto);
+    }
 
     @UseGuards(JwtAuthGuard)
     @Get('chatter')
-    getChatteredRide() { }
+    getChatteredRide(@CurrentUser('id') passengerId: string,) { return this.svc.getChatteredRides(passengerId)}
 
 
 }

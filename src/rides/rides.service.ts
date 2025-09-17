@@ -27,6 +27,13 @@ export class RidesService {
     });
   }
 
+
+  /* Update this Function.
+  // if this is a Keke ride and rideType: shared, 
+      Let it create a driverSchedule because that's what other passengers will scan when attempting to book a similar ride
+      check if there are other rideRequest with the same start junction and end junction, and accept those too
+      when creating a ride, add all the rideRequest passengers to ridePasseneger and also update the seatsFilled accordinly
+  // */
   async acceptRequestAsDriver(driverId: string, requestId: string) {
     return this.prisma.$transaction(async tx => {
       const req = await tx.rideRequest.findUnique({ where: { id: requestId } });
@@ -221,7 +228,7 @@ export class RidesService {
 
     // generate passenger-specific ticket code
     const ticketCode = String(Math.floor(1000 + Math.random() * 9000)); // 4 digit
-    const scanCode = crypto.randomUUID();
+    const scanCode = generateScanCode();
 
     const result = await this.prisma.$transaction([
       this.prisma.ridePassenger.create({
@@ -236,6 +243,10 @@ export class RidesService {
       }),
       this.prisma.ride.update({
         where: { id: ride.id },
+        data: { seatsFilled: { increment: 1 } },
+      }),
+      this.prisma.driverSchedule.update({
+        where: { id: scheduleId },
         data: { seatsFilled: { increment: 1 } },
       }),
     ]);

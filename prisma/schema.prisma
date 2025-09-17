@@ -223,6 +223,7 @@ model Ride {
   id                String      @id @default(cuid())
   routeId           String?
   driverId          String?
+  isChattered       String?
   rideType          RideType
   vehicleType       VehicleType
   status            RideStatus  @default(PENDING)
@@ -287,6 +288,7 @@ model RideRequest {
   id              String      @id @default(cuid())
   passengerId     String
   vehicleType     VehicleType
+  isChattered     String?
   rideType        RideType // SHARED for KEKE, PRIVATE for CAR/BUS
   // Keke junction-to-junction
   startJunctionId String?

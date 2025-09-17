@@ -93,6 +93,82 @@ export class PassengersService {
         return { request: req };
     }
 
+    async chatter(passengerId: string, dto: any) {
+
+        if (dto.vehicleType === VehicleType.KEKE) {
+
+            // create request regardless, for smart scan notifications
+            const price = await this.quoteKeke(dto.startJunctionId, dto.endJunctionId);
+            const req = await this.prisma.rideRequest.create({
+                data: {
+                    passengerId,
+                    vehicleType: 'KEKE',
+                    rideType: RideType.SHARED,
+                    startJunctionId: dto.startJunctionId,
+                    endJunctionId: dto.endJunctionId,
+                    scheduledFor: dto.scheduledFor ? new Date(dto.scheduledFor) : null,
+                    seatsNeeded: dto.seatsNeeded ?? 1,
+                    priceQuoted: price,
+                    isChattered: "true",
+                    expiresAt: dto.scheduledFor
+                        ? new Date(new Date(dto.scheduledFor).getTime() + 60 * 60 * 1000)
+                        : new Date(Date.now() + 60 * 60 * 1000),
+                },
+            });
+
+            // emit to drivers nearby junctions
+            // this.events.emit('ride.request.created', req)
+
+            return { request: req, success: true };
+        }
+
+        // CAR or BUS private
+        const distanceKm = this.haversine(dto.startLat, dto.startLng, dto.endLat, dto.endLng);
+        const price = await this.quoteByDistance(distanceKm, dto.vehicleType);
+
+        const req = await this.prisma.rideRequest.create({
+            data: {
+                passengerId,
+                vehicleType: dto.vehicleType,
+                rideType: RideType.PRIVATE,
+                startLat: dto.startLat,
+                startLng: dto.startLng,
+                endLat: dto.endLat,
+                endLng: dto.endLng,
+                seatsNeeded: dto.seatsNeeded ?? 1,
+                scheduledFor: dto.scheduledFor ? new Date(dto.scheduledFor) : null,
+                priceQuoted: price,
+                isChattered: "true",
+                expiresAt: dto.scheduledFor
+                    ? new Date(new Date(dto.scheduledFor).getTime() + 60 * 60 * 1000)
+                    : new Date(Date.now() + 60 * 60 * 1000),
+            },
+        });
+
+        // push to nearby drivers of that type
+        // this.events.emit('ride.request.created', req)
+
+        return { request: req, success: true };
+    }
+
+    async getChatteredRides(passengerId: string) {
+        const schedules = await this.prisma.rideRequest.findMany({
+            where: {
+                passengerId: passengerId,
+                isChattered: "true",
+            },
+            orderBy: { scheduledFor: 'asc' },
+            take: 10,
+        });
+
+        return { schedules: schedules };
+    }
+
+
+
+
+
+
     private haversine(aLat: number, aLng: number, bLat: number, bLng: number) {
         const R = 6371, toRad = (n: number) => (n * Math.PI) / 180;
         const dLat = toRad(bLat - aLat), dLng = toRad(bLng - aLng);
