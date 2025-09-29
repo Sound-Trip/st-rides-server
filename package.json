@@ -3,11 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+     "prebuild": "rimraf dist", 
     "build": "tsc -p tsconfig.build.json",
-    "dev": "nest start --watch",
-    "start": "nest start",
-    "start:prod": "node dist/main",
-    "lint": "eslint . --ext .ts"
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main.js"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "dependencies": {
     "@fastify/static": "latest",
