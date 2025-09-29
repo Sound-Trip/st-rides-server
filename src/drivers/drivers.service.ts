@@ -56,7 +56,7 @@ export class DriversService {
         const driver = await this.prisma.driverProfile.findUnique({ where: { userId } });
         if (!driver || driver.vehicleType !== 'KEKE') throw new Error('Only KEKE can create schedules');
 
-        return this.prisma.driverSchedule.create({
+        const req = await this.prisma.driverSchedule.create({
             data: {
                 driverId: userId,
                 vehicleType: 'KEKE',
@@ -66,36 +66,67 @@ export class DriversService {
                 capacity: dto.capacity ?? 4,
             },
         });
+        return { request: req, success: true };
     }
 
-    async smartScan(startJunctionId: string, endJunctionId: string, windowMinutes: number) {
-        const now = new Date();
-        const windowEnd = new Date(now.getTime() + windowMinutes * 60000);
-        // Count current demand for this exact pair that is pending now
-        const pending = await this.prisma.rideRequest.findMany({
-            where: {
-                vehicleType: 'KEKE',
-                rideType: 'SHARED',
-                status: 'PENDING',
-                startJunctionId,
-                endJunctionId,
-            },
-        });
-
-        // Also show upcoming schedules from other drivers for awareness
+    async getPostedScheduled(userId: string) {
         const schedules = await this.prisma.driverSchedule.findMany({
             where: {
-                startJunctionId,
-                endJunctionId,
-                vehicleType: 'KEKE',
-                isActive: true,
-                departureTime: { gte: now, lte: windowEnd },
+                driverId: userId,
             },
             orderBy: { departureTime: 'asc' },
             take: 10,
         });
+        return { schedules }
+    }
 
-        return { pendingCount: pending, schedules };
+    /** Performs a smart scan to find pending shared ride requests within a given time window.
+     * 
+     * Ride requests are typically created by passengers via:
+     * - `/passengers/ride-requests` endpoint (passenger app)
+     *
+     * Workflow:
+     * 1. Determines the current time (`now`) and calculates the `windowEnd` time by adding
+     *    the specified `windowMinutes`.
+     * 2. Queries `rideRequest` records with the following conditions:
+     *    - `vehicleType` must be "KEKE".
+     *    - `rideType` must be "SHARED".
+     *    - `status` must be "PENDING".
+     *    - `scheduledFor` must fall between `now` and `windowEnd`.
+     *    - If a `startJunctionId` is provided (not `"all"`), filter by that junction.
+     *    - If an `endJunctionId` is provided (not `"all"`), filter by that junction.
+     *
+     * Returns:
+     * - `requests`: List of ride requests that meet the scan criteria.
+     *
+     * Errors:
+     * - None explicitly thrown in this method, but empty results are possible if no
+     *   matching requests exist within the scan window.
+     *
+     * @param startJunctionId The identifier of the starting junction. Use `"all"` to ignore this filter.
+     * @param endJunctionId   The identifier of the ending junction. Use `"all"` to ignore this filter.
+     * @param windowMinutes   The number of minutes ahead from `now` to scan for pending requests.
+     * @returns An object containing the list of matching ride requests.
+     */
+    async smartScan(startJunctionId: string, endJunctionId: string, windowMinutes: number) {
+        const now = new Date();
+        const windowEnd = new Date(now.getTime() + windowMinutes * 60000);
+
+        const requests = await this.prisma.rideRequest.findMany({
+            where: {
+                vehicleType: "KEKE",
+                rideType: "SHARED",
+                status: "PENDING",
+                // scheduledFor: { ℹ️ REMINDER FOR ME: "RETURN THIS BACK IN POST PRODUCTION"
+                //     gte: now,
+                //     lte: windowEnd,
+                // },
+                ...(startJunctionId !== "all" ? { startJunctionId } : {}),
+                ...(endJunctionId !== "all" ? { endJunctionId } : {}),
+            },
+        });
+
+        return { requests };
     }
 
 }

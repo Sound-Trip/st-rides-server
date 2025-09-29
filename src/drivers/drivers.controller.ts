@@ -45,18 +45,26 @@ export class DriversController {
     @UseGuards(JwtAuthGuard)
     @Get('schedules')
     getSchedules(
+        @CurrentUser('id') userId: string,
+    ) {
+        return this.svc.getPostedScheduled(userId);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Patch('schedules/:id')
+    editSchedule() { }
+
+    @UseGuards(JwtAuthGuard)
+    @Delete('schedules/:id')
+    deleteSchedule() { }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('smartScan')
+    smartScan(
         @Query('startJunctionId') s: string,
         @Query('endJunctionId') e: string,
         @Query('windowMinutes') w = '30',
     ) {
         return this.svc.smartScan(s, e, parseInt(w, 10));
     }
-
-    @UseGuards(JwtAuthGuard)
-    @Patch('schedules/:id')
-    patchSchedule() { }
-
-    @UseGuards(JwtAuthGuard)
-    @Delete('schedules/:id')
-    deleteSchedule() { }
 }
