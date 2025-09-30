@@ -35,7 +35,9 @@ export class PassengersController {
 
     @UseGuards(JwtAuthGuard)
     @Get('ride-requests')
-    getRiderequest() { }
+    getRiderequest(
+        @CurrentUser('id') passengerId: string,
+    ) { return this.svc.getRideRequestd(passengerId); }
 
     @UseGuards(JwtAuthGuard)
     @Delete('ride-requests:id')

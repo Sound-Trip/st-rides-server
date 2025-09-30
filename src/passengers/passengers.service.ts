@@ -93,6 +93,20 @@ export class PassengersService {
         return { request: req };
     }
 
+    async getRideRequestd(passengerId: string) {
+        const schedules = await this.prisma.rideRequest.findMany({
+            where: {
+                passengerId: passengerId,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+        });
+        // push to nearby drivers of that type
+        // this.events.emit('ride.request.created', req)
+
+        return { request: schedules };
+    }
+
     async chatter(passengerId: string, dto: any) {
 
         if (dto.vehicleType === VehicleType.KEKE) {
