@@ -3,15 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prebuild": "rm -rf dist",
-    "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/main.js",
-    "start:dev": "nest start --watch",
-    "start:prod": "node dist/main.js",
-    "seed": "ts-node prisma/seed.ts"
-  },
-  "engines": {
-    "node": "20.x"
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "nest start",
+    "start:prod": "node dist/main",
+    "lint": "eslint . --ext .ts"
   },
   "dependencies": {
     "@fastify/static": "latest",

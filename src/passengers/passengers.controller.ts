@@ -57,4 +57,9 @@ export class PassengersController {
     getChatteredRide(@CurrentUser('id') passengerId: string,) { return this.svc.getChatteredRides(passengerId)}
 
 
+    @UseGuards(JwtAuthGuard)
+    @Get('chatterv1')
+    getChatteredRidev1(@CurrentUser('id') passengerId: string,) { return this.svc.getChatteredRides(passengerId)}
+
+
 }

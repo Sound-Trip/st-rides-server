@@ -101,6 +101,7 @@ export class PassengersService {
             orderBy: { createdAt: 'desc' },
             take: 10,
         });
+        console.log(schedules); 
         // push to nearby drivers of that type
         // this.events.emit('ride.request.created', req)
 
