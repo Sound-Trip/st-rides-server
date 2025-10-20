@@ -8,7 +8,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 @Controller('passengers')
 export class PassengersController {
     constructor(private svc: PassengersService) { }
- 
+
     @UseGuards(JwtAuthGuard)
     @Get('me')
     updateLocation() { }
@@ -41,9 +41,9 @@ export class PassengersController {
     ) { return this.svc.getRideRequestd(passengerId); }
 
     @UseGuards(JwtAuthGuard)
-    @Delete('ride-requests:id')
-    deleteRiderequest(@Param('id') requestID: string) { 
-        return this.svc.deleteRiderequest(requestID);
+    @Delete('ride-requests/:id')
+    deleteRideRequest(@Param('id') requestID: string) {
+        return this.svc.deleteRideRequest(requestID);
     }
 
     @UseGuards(JwtAuthGuard)
@@ -57,12 +57,12 @@ export class PassengersController {
 
     @UseGuards(JwtAuthGuard)
     @Get('chatter')
-    getChatteredRide(@CurrentUser('id') passengerId: string,) { return this.svc.getChatteredRides(passengerId)}
+    getChatteredRide(@CurrentUser('id') passengerId: string,) { return this.svc.getChatteredRides(passengerId) }
 
 
     @UseGuards(JwtAuthGuard)
     @Get('chatterv1')
-    getChatteredRidev1(@CurrentUser('id') passengerId: string,) { return this.svc.getChatteredRides(passengerId)}
+    getChatteredRidev1(@CurrentUser('id') passengerId: string,) { return this.svc.getChatteredRides(passengerId) }
 
 
 }
