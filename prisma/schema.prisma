@@ -1,7 +1,3 @@
-// This is ST Rides Prisma schema file,
-// Edited: Tue Sep 2, 2025.
-// learn more about Prisma in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,7 +7,304 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ------------------ ENUMS ------------------
+model User {
+  id                  String               @id @default(cuid())
+  firstName           String               @map("first_name")
+  lastName            String               @map("last_name")
+  phone               String?              @unique
+  email               String?              @unique
+  passwordHash        String?              @map("password_hash")
+  role                UserRole
+  isActive            Boolean              @default(true) @map("is_active")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  driverProfile       DriverProfile?
+  driverSchedules     DriverSchedule[]
+  maintenanceRequests MaintenanceRequest[]
+  notifications       Notification[]
+  otpCodes            OtpCode[]
+  passengerProfile    PassengerProfile?
+  ridePassengers      RidePassenger[]
+  rideRequests        RideRequest[]
+  ridesAsDriver       Ride[]               @relation("DriverRides")
+  walletTransactions  WalletTransaction[]
+
+  @@map("users")
+}
+
+model DriverProfile {
+  userId              String      @id @map("user_id")
+  vehicleType         VehicleType @map("vehicle_type")
+  vehicleModel        String      @map("vehicle_model")
+  plateNumber         String      @map("plate_number")
+  busVariantId        String?
+  licenseNumber       String      @map("license_number")
+  profilePhotoUrl     String?     @map("profile_photo_url")
+  assignedRouteId     String?     @map("assigned_route_id")
+  isCompanyVehicle    Boolean     @default(false) @map("is_company_vehicle")
+  lastMaintenanceDate DateTime?   @map("last_maintenance_date")
+  maintenanceDueDate  DateTime?   @map("maintenance_due_date")
+  isBlocked           Boolean     @default(false) @map("is_blocked")
+  walletBalance       Decimal     @default(0) @map("wallet_balance") @db.Decimal(10, 2)
+  totalEarnings       Decimal     @default(0) @map("total_earnings") @db.Decimal(10, 2)
+  rating              Decimal?    @db.Decimal(3, 2)
+  totalRides          Int         @default(0) @map("total_rides")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+  isOnline            Boolean     @default(false) @map("is_online")
+  isAvailable         Boolean     @default(true) @map("is_available")
+  currentLat          Float?      @map("current_lat")
+  currentLng          Float?      @map("current_lng")
+  lastPingAt          DateTime?   @map("last_ping_at")
+  assignedRoute       Route?      @relation(fields: [assignedRouteId], references: [id])
+  busVariant          BusVariant? @relation(fields: [busVariantId], references: [id])
+  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([isOnline, isAvailable])
+  @@index([currentLat, currentLng])
+  @@map("driver_profiles")
+}
+
+model PassengerProfile {
+  userId          String   @id @map("user_id")
+  profilePhotoUrl String?  @map("profile_photo_url")
+  walletBalance   Decimal  @default(0) @map("wallet_balance") @db.Decimal(10, 2)
+  earnedTokens    Int      @default(0) @map("earned_tokens")
+  rating          Decimal? @db.Decimal(3, 2)
+  totalRides      Int      @default(0) @map("total_rides")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("passenger_profiles")
+}
+
+model BusVariant {
+  id       String          @id @default(cuid())
+  name     String
+  capacity Int
+  baseFare Decimal         @db.Decimal(8, 2)
+  drivers  DriverProfile[]
+
+  @@map("bus_variants")
+}
+
+model Junction {
+  id             String           @id @default(cuid())
+  name           String           @unique
+  lat            Float
+  lng            Float
+  endSchedules   DriverSchedule[] @relation("SchedEndJunction")
+  startSchedules DriverSchedule[] @relation("SchedStartJunction")
+  routesAsEnd    Route[]          @relation("EndJunction")
+  routesAsStart  Route[]          @relation("StartJunction")
+
+  @@map("junctions")
+}
+
+model Route {
+  id              String          @id @default(cuid())
+  vehicleType     VehicleType
+  basePrice       Decimal         @db.Decimal(8, 2)
+  estimatedTime   Int?
+  distance        Decimal?        @db.Decimal(8, 2)
+  isActive        Boolean         @default(true)
+  startJunctionId String?
+  endJunctionId   String?
+  startLat        Float?
+  startLng        Float?
+  endLat          Float?
+  endLng          Float?
+  driverProfiles  DriverProfile[]
+  rides           Ride[]
+  endJunction     Junction?       @relation("EndJunction", fields: [endJunctionId], references: [id])
+  startJunction   Junction?       @relation("StartJunction", fields: [startJunctionId], references: [id])
+
+  @@index([vehicleType])
+  @@map("routes")
+}
+
+model Ride {
+  id                String          @id @default(cuid())
+  routeId           String?
+  driverId          String?
+  isChattered       String?
+  rideType          RideType
+  vehicleType       VehicleType
+  status            RideStatus      @default(PENDING)
+  pickupTime        DateTime?
+  scheduledByDriver Boolean         @default(false)
+  capacity          Int?
+  seatsFilled       Int             @default(0) @map("seats_filled")
+  requestedStartLat Float?
+  requestedStartLng Float?
+  requestedEndLat   Float?
+  requestedEndLng   Float?
+  startJunctionId   String?
+  endJunctionId     String?
+  scanCode          String          @unique
+  shortCode         String
+  startTime         DateTime?
+  endTime           DateTime?
+  totalAmount       Decimal         @default(0) @db.Decimal(8, 2)
+  commission        Decimal         @default(0) @db.Decimal(8, 2)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  passengers        RidePassenger[]
+  driver            User?           @relation("DriverRides", fields: [driverId], references: [id])
+  route             Route?          @relation(fields: [routeId], references: [id])
+
+  @@index([status])
+  @@map("rides")
+}
+
+model RidePassenger {
+  id            String        @id @default(cuid())
+  rideId        String
+  passengerId   String
+  paymentMethod PaymentMethod
+  pricePaid     Decimal       @db.Decimal(8, 2)
+  rated         Boolean       @default(false)
+  rating        Int?
+  feedback      String?
+  ticketCode    String
+  scanCode      String        @unique
+  passenger     User          @relation(fields: [passengerId], references: [id])
+  ride          Ride          @relation(fields: [rideId], references: [id])
+
+  @@unique([rideId, passengerId])
+  @@map("ride_passengers")
+}
+
+model RideRequest {
+  id              String            @id @default(cuid())
+  passengerId     String
+  vehicleType     VehicleType
+  isChattered     String?
+  rideType        RideType
+  startJunctionId String?
+  endJunctionId   String?
+  startLat        Float?
+  startLng        Float?
+  endLat          Float?
+  endLng          Float?
+  scheduledFor    DateTime?
+  status          RideRequestStatus @default(PENDING)
+  seatsNeeded     Int               @default(1)
+  priceQuoted     Decimal?          @db.Decimal(10, 2)
+  expiresAt       DateTime?
+  createdAt       DateTime          @default(now())
+  acceptedRideId  String?
+  passenger       User              @relation(fields: [passengerId], references: [id])
+
+  @@index([vehicleType, rideType, status])
+  @@map("ride_requests")
+}
+
+model DriverSchedule {
+  id              String      @id @default(cuid())
+  driverId        String
+  vehicleType     VehicleType
+  startJunctionId String
+  endJunctionId   String
+  departureTime   DateTime
+  capacity        Int         @default(4)
+  seatsFilled     Int         @default(0)
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  driver          User        @relation(fields: [driverId], references: [id])
+  endJunction     Junction    @relation("SchedEndJunction", fields: [endJunctionId], references: [id])
+  startJunction   Junction    @relation("SchedStartJunction", fields: [startJunctionId], references: [id])
+
+  @@index([startJunctionId, endJunctionId, departureTime])
+  @@map("driver_schedules")
+}
+
+model WalletTransaction {
+  id          String            @id @default(cuid())
+  userId      String            @map("user_id")
+  amount      Decimal           @db.Decimal(10, 2)
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  description String?
+  reference   String?           @unique
+  rideId      String?           @map("ride_id")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  user        User              @relation(fields: [userId], references: [id])
+
+  @@map("wallet_transactions")
+}
+
+model MaintenanceRequest {
+  id            String            @id @default(cuid())
+  driverId      String            @map("driver_id")
+  requestedDate DateTime          @map("requested_date")
+  approvedDate  DateTime?         @map("approved_date")
+  completedDate DateTime?         @map("completed_date")
+  status        MaintenanceStatus @default(REQUESTED)
+  description   String?
+  cost          Decimal?          @db.Decimal(8, 2)
+  approvedBy    String?           @map("approved_by")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  driver        User              @relation(fields: [driverId], references: [id])
+
+  @@map("maintenance_requests")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false) @map("is_read")
+  via       String
+  metadata  Json?
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  code      String
+  type      String
+  expiresAt DateTime @map("expires_at")
+  isUsed    Boolean  @default(false) @map("is_used")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("otp_codes")
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         String    @default("ADMIN")
+  permissions  String[]
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLogin    DateTime? @map("last_login")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_config")
+}
 
 enum UserRole {
   PASSENGER
@@ -78,353 +371,4 @@ enum RideRequestStatus {
   ACCEPTED
   EXPIRED
   CANCELLED
-}
-
-// ------------------ CORE USER MODELS ------------------
-
-model User {
-  id           String   @id @default(cuid())
-  firstName    String   @map("first_name")
-  lastName     String   @map("last_name")
-  phone        String?  @unique
-  email        String?  @unique
-  passwordHash String?  @map("password_hash")
-  role         UserRole
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  driverProfile    DriverProfile?
-  passengerProfile PassengerProfile?
-  ridesAsDriver    Ride[]            @relation("DriverRides")
-  ridePassengers   RidePassenger[]
-
-  rideRequests    RideRequest[]
-  driverSchedules DriverSchedule[]
-
-  walletTransactions  WalletTransaction[]
-  maintenanceRequests MaintenanceRequest[]
-  notifications       Notification[]
-  otpCodes            OtpCode[]
-
-  @@map("users")
-}
-
-model DriverProfile {
-  userId              String      @id @map("user_id")
-  vehicleType         VehicleType @map("vehicle_type")
-  vehicleModel        String      @map("vehicle_model")
-  plateNumber         String      @map("plate_number")
-  busVariantId        String?
-  busVariant          BusVariant? @relation(fields: [busVariantId], references: [id])
-  licenseNumber       String      @map("license_number")
-  profilePhotoUrl     String?     @map("profile_photo_url")
-  assignedRouteId     String?     @map("assigned_route_id")
-  isCompanyVehicle    Boolean     @default(false) @map("is_company_vehicle")
-  lastMaintenanceDate DateTime?   @map("last_maintenance_date")
-  maintenanceDueDate  DateTime?   @map("maintenance_due_date")
-  isBlocked           Boolean     @default(false) @map("is_blocked")
-  walletBalance       Decimal     @default(0) @map("wallet_balance") @db.Decimal(10, 2)
-  totalEarnings       Decimal     @default(0) @map("total_earnings") @db.Decimal(10, 2)
-  rating              Decimal?    @db.Decimal(3, 2)
-  totalRides          Int         @default(0) @map("total_rides")
-  createdAt           DateTime    @default(now()) @map("created_at")
-  updatedAt           DateTime    @updatedAt @map("updated_at")
-  isOnline            Boolean     @default(false) @map("is_online")
-  isAvailable         Boolean     @default(true) @map("is_available") // not on a ride
-  currentLat          Float?      @map("current_lat")
-  currentLng          Float?      @map("current_lng")
-  lastPingAt          DateTime?   @map("last_ping_at")
-
-  // Relations
-  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assignedRoute Route? @relation(fields: [assignedRouteId], references: [id])
-
-  @@index([isOnline, isAvailable])
-  @@index([currentLat, currentLng])
-  @@map("driver_profiles")
-}
-
-model PassengerProfile {
-  userId          String   @id @map("user_id")
-  profilePhotoUrl String?  @map("profile_photo_url")
-  walletBalance   Decimal  @default(0) @map("wallet_balance") @db.Decimal(10, 2)
-  earnedTokens    Int      @default(0) @map("earned_tokens")
-  rating          Decimal? @db.Decimal(3, 2)
-  totalRides      Int      @default(0) @map("total_rides")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("passenger_profiles")
-}
-
-// ------------------ BUS SUPPORT ------------------
-
-model BusVariant {
-  id       String  @id @default(cuid())
-  name     String
-  capacity Int
-  baseFare Decimal @db.Decimal(8, 2)
-
-  drivers DriverProfile[]
-
-  @@map("bus_variants")
-}
-
-// ------------------ CORE RIDE & ROUTE MODELS ------------------
-
-model Junction {
-  id   String @id @default(cuid())
-  name String @unique
-  lat  Float
-  lng  Float
-
-  startSchedules DriverSchedule[] @relation("SchedStartJunction")
-  endSchedules   DriverSchedule[] @relation("SchedEndJunction")
-
-  routesAsStart Route[] @relation("StartJunction")
-  routesAsEnd   Route[] @relation("EndJunction")
-
-  @@map("junctions")
-}
-
-model Route {
-  id            String      @id @default(cuid())
-  vehicleType   VehicleType
-  basePrice     Decimal     @db.Decimal(8, 2)
-  estimatedTime Int? // in minutes
-  distance      Decimal?    @db.Decimal(8, 2) // in kilometers
-  isActive      Boolean     @default(true)
-
-  // Junction-to-junction (for KEKE only)
-  startJunctionId String?
-  endJunctionId   String?
-  startJunction   Junction? @relation("StartJunction", fields: [startJunctionId], references: [id])
-  endJunction     Junction? @relation("EndJunction", fields: [endJunctionId], references: [id])
-
-  // Free-form locations (for CAR/BUS rides)
-  startLat       Float?
-  startLng       Float?
-  endLat         Float?
-  endLng         Float?
-  driverProfiles DriverProfile[]
-
-  rides Ride[]
-
-  @@index([vehicleType])
-  @@map("routes")
-}
-
-model Ride {
-  id                String      @id @default(cuid())
-  routeId           String?
-  driverId          String?
-  isChattered       String?
-  rideType          RideType
-  vehicleType       VehicleType
-  status            RideStatus  @default(PENDING)
-  pickupTime        DateTime?
-  scheduledByDriver Boolean     @default(false) // for keke scheduled rides
-  capacity          Int?
-  seatsFilled       Int         @default(0) @map("seats_filled")
-  requestedStartLat Float?
-  requestedStartLng Float?
-  requestedEndLat   Float?
-  requestedEndLng   Float?
-  startJunctionId String?
-  endJunctionId   String?
-
-  // Validation codes
-  scanCode  String @unique
-  shortCode String // 4-digit code
-
-  // Ride timing
-  startTime DateTime?
-  endTime   DateTime?
-
-  // Payments
-  totalAmount Decimal @default(0) @db.Decimal(8, 2)
-  commission  Decimal @default(0) @db.Decimal(8, 2)
-
-  // Relations
-  driver     User?           @relation("DriverRides", fields: [driverId], references: [id])
-  route      Route?          @relation(fields: [routeId], references: [id])
-  passengers RidePassenger[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
-  @@map("rides")
-}
-
-model RidePassenger {
-  id            String        @id @default(cuid())
-  rideId        String
-  passengerId   String
-  paymentMethod PaymentMethod
-  pricePaid     Decimal       @db.Decimal(8, 2)
-  rated         Boolean       @default(false)
-  rating        Int?
-  feedback      String?
-
-   // passenger-specific validation codes
-  ticketCode String
-  scanCode   String @unique
-
-  // Relations
-  ride      Ride @relation(fields: [rideId], references: [id])
-  passenger User @relation(fields: [passengerId], references: [id])
-
-  @@unique([rideId, passengerId])
-  @@map("ride_passengers")
-}
-
-model RideRequest {
-  id              String      @id @default(cuid())
-  passengerId     String
-  vehicleType     VehicleType
-  isChattered     String?
-  rideType        RideType // SHARED for KEKE, PRIVATE for CAR/BUS
-  // Keke junction-to-junction
-  startJunctionId String?
-  endJunctionId   String?
-  // Car/Bus free-form
-  startLat        Float?
-  startLng        Float?
-  endLat          Float?
-  endLng          Float?
-
-  scheduledFor   DateTime? // future time if any
-  status         RideRequestStatus @default(PENDING)
-  seatsNeeded    Int               @default(1)
-  priceQuoted    Decimal?          @db.Decimal(10, 2)
-  expiresAt      DateTime?
-  createdAt      DateTime          @default(now())
-  acceptedRideId String? // once a driver accepts, connect to Ride
-
-  passenger User @relation(fields: [passengerId], references: [id])
-
-  @@index([vehicleType, rideType, status])
-  @@map("ride_requests")
-}
-
-model DriverSchedule {
-  id              String      @id @default(cuid())
-  driverId        String
-  vehicleType     VehicleType // KEKE only by policy, but keep flexible
-  startJunctionId String
-  endJunctionId   String
-  departureTime   DateTime
-  capacity        Int         @default(4)
-  seatsFilled     Int         @default(0)
-  isActive        Boolean     @default(true)
-  createdAt       DateTime    @default(now())
-
-  driver        User     @relation(fields: [driverId], references: [id])
-  startJunction Junction @relation("SchedStartJunction", fields: [startJunctionId], references: [id])
-  endJunction   Junction @relation("SchedEndJunction", fields: [endJunctionId], references: [id])
-
-  @@index([startJunctionId, endJunctionId, departureTime])
-  @@map("driver_schedules")
-}
-
-// ------------------ OTHER CORE USER MODELS ------------------
-
-model WalletTransaction {
-  id          String            @id @default(cuid())
-  userId      String            @map("user_id")
-  amount      Decimal           @db.Decimal(10, 2)
-  type        TransactionType
-  status      TransactionStatus @default(PENDING)
-  description String?
-  reference   String?           @unique
-  rideId      String?           @map("ride_id")
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @updatedAt @map("updated_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id])
-
-  @@map("wallet_transactions")
-}
-
-model MaintenanceRequest {
-  id            String            @id @default(cuid())
-  driverId      String            @map("driver_id")
-  requestedDate DateTime          @map("requested_date")
-  approvedDate  DateTime?         @map("approved_date")
-  completedDate DateTime?         @map("completed_date")
-  status        MaintenanceStatus @default(REQUESTED)
-  description   String?
-  cost          Decimal?          @db.Decimal(8, 2)
-  approvedBy    String?           @map("approved_by")
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
-
-  // Relations
-  driver User @relation(fields: [driverId], references: [id])
-
-  @@map("maintenance_requests")
-}
-
-model Notification {
-  id        String           @id @default(cuid())
-  userId    String           @map("user_id")
-  type      NotificationType
-  title     String
-  body      String
-  isRead    Boolean          @default(false) @map("is_read")
-  via       String // push, sms, email
-  metadata  Json? // Additional data
-  createdAt DateTime         @default(now()) @map("created_at")
-  updatedAt DateTime         @updatedAt @map("updated_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id])
-
-  @@map("notifications")
-}
-
-model OtpCode {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  code      String
-  type      String // login, registration, password_reset
-  expiresAt DateTime @map("expires_at")
-  isUsed    Boolean  @default(false) @map("is_used")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id])
-
-  @@map("otp_codes")
-}
-
-model AdminUser {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String    @map("password_hash")
-  role         String    @default("ADMIN")
-  permissions  String[] // JSON array of permissions
-  isActive     Boolean   @default(true) @map("is_active")
-  lastLogin    DateTime? @map("last_login")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-
-  @@map("admin_users")
-}
-
-model SystemConfig {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  value       String
-  description String?
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@map("system_config")
 }

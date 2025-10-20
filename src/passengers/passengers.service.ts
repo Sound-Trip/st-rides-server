@@ -7,9 +7,18 @@ import { VehicleType, RideType } from '../common/enums';
 export class PassengersService {
     constructor(private prisma: PrismaService) { }
 
-    async smartScan(startJunctionId: string, endJunctionId: string, windowMinutes: number) {
+    async smartScan(startJunctionId: string, endJunctionId: string, windowMinutes: number, scheduledFor?: string) {
         const now = new Date();
-        const windowEnd = new Date(now.getTime() + windowMinutes * 60000);
+
+        // Default scan window (if no specific schedule time is provided)
+        let windowStart = new Date(now.getTime() - 15 * 60000);
+        let windowEnd = new Date(now.getTime() + windowMinutes * 60000);
+        // If user provides a specific scheduled time, adjust window to focus around it
+        if (scheduledFor) {
+            const scheduledDate = new Date(scheduledFor);
+            windowStart = new Date(scheduledDate.getTime() - 10 * 60000);
+            windowEnd = new Date(scheduledDate.getTime() + 30 * 60000);
+        }
 
         // show upcoming schedules from other drivers for awareness
         const schedules = await this.prisma.driverSchedule.findMany({
@@ -18,13 +27,13 @@ export class PassengersService {
                 endJunctionId,
                 vehicleType: 'KEKE',
                 isActive: true,
-                // departureTime: { gte: new Date(now.getTime() - 15 * 60000), lte: windowEnd },
+                departureTime: { gte: windowStart, lte: windowEnd },
             },
             orderBy: { departureTime: 'asc' },
             take: 10,
         });
 
-        return { schedules };
+        return { schedules, windowStart, windowEnd };
     }
 
     async create(passengerId: string, dto: any) {
@@ -101,7 +110,7 @@ export class PassengersService {
             orderBy: { createdAt: 'desc' },
             take: 10,
         });
-        console.log(schedules); 
+        console.log(schedules);
         // push to nearby drivers of that type
         // this.events.emit('ride.request.created', req)
 

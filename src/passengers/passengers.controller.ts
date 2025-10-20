@@ -8,7 +8,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 @Controller('passengers')
 export class PassengersController {
     constructor(private svc: PassengersService) { }
-
+ 
     @UseGuards(JwtAuthGuard)
     @Get('me')
     updateLocation() { }
@@ -19,9 +19,10 @@ export class PassengersController {
         @Query('startJunctionId') s: string,
         @Query('endJunctionId') e: string,
         @Query('windowMinutes') w = '30',
+        @Query('scheduledFor') sf: string,
     ) {
         const minutes = Number.isNaN(parseInt(w, 10)) ? 30 : parseInt(w, 10);
-        return this.svc.smartScan(s, e, minutes);
+        return this.svc.smartScan(s, e, minutes, sf);
     }
 
     @UseGuards(JwtAuthGuard)

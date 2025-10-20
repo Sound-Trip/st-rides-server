@@ -1,3 +1,10 @@
+first run: npx prisma generate
+This rebuilds node_modules/.prisma/client and updates the available exports.
+
+
+
+
+
 Run Prisma migrations to create all the tables from schema.prisma:
 
 npx prisma migrate dev
@@ -9,6 +16,10 @@ npx prisma migrate reset
 
 To View A GUI schema of your tables:
 npx prisma studio
+
+npx prisma db pull
+
+npx prisma studio --port 5555
 
 
 
