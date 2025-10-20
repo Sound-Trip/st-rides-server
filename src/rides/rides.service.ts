@@ -325,7 +325,7 @@ export class RidesService {
     return { shortCode: ride.shortCode, qrDataUrl: dataUrl };
   }
 
-  async cancelRide(driverId: string, rideId: string, reason: string) {
+  async cancelRide_old(driverId: string, rideId: string, reason: string) {
     const ride = await this.prisma.ride.findUnique({ where: { id: rideId } });
     if (!ride) throw new NotFoundException('Ride not found');
     if (ride.driverId !== driverId) throw new ForbiddenException('Not your ride');
@@ -338,6 +338,98 @@ export class RidesService {
       data: { status: 'CANCELLED' },
     });
     // TODO: emit `ride.cancelled` event and notify passengers
+  }
+
+  async cancelRide(userId: string, rideId: string, reason: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const ride = await tx.ride.findUnique({
+        where: { id: rideId },
+        include: { passengers: true },
+      });
+
+      if (!ride) throw new NotFoundException('Ride not found');
+      if (ride.status !== 'PENDING' && ride.status !== 'SCHEDULED') {
+        throw new BadRequestException('Ride cannot be cancelled at this stage');
+      }
+
+      // 🚗 CASE 1: Driver is cancelling
+      if (ride.driverId === userId) {
+        const updatedRide = await tx.ride.update({
+          where: { id: rideId },
+          data: {
+            status: 'CANCELLED',
+            updatedAt: new Date(),
+          },
+        });
+
+        // Update related rideRequests
+        await tx.rideRequest.updateMany({
+          where: { acceptedRideId: rideId },
+          data: { status: 'CANCELLED' },
+        });
+
+        // Optionally store cancellation reason
+        // await tx.notification.createMany({
+        //   data: ride.passengers.map((p) => ({
+        //     userId: p.passengerId,
+        //     title: 'Ride Cancelled',
+        //     message: `Driver cancelled the ride. Reason: ${reason}`,
+        //   })),
+        // });
+
+        // TODO: emit event "ride.cancelled"
+        return { message: 'Ride cancelled by driver', ride: updatedRide };
+      }
+
+      // 🧍 CASE 2: Passenger is cancelling
+      const passengerInRide = await tx.ridePassenger.findFirst({
+        where: { rideId, passengerId: userId },
+      });
+
+      if (!passengerInRide) {
+        throw new ForbiddenException('You are not part of this ride');
+      }
+
+      // Remove passenger from ride
+      await tx.ridePassenger.delete({
+        where: { id: passengerInRide.id },
+      });
+
+      // Update corresponding rideRequest if exists
+      await tx.rideRequest.updateMany({
+        where: { passengerId: userId, acceptedRideId: rideId },
+        data: { status: 'CANCELLED' },
+      });
+
+      // Reduce seat count
+      await tx.ride.update({
+        where: { id: rideId },
+        data: { seatsFilled: { decrement: 1 } },
+      });
+
+      // If no passengers remain, cancel the ride entirely
+      const remaining = await tx.ridePassenger.count({ where: { rideId } });
+      if (remaining === 0) {
+        await tx.ride.update({
+          where: { id: rideId },
+          data: { status: 'CANCELLED' },
+        });
+      }
+
+      // Optionally notify driver
+      // if (ride.driverId) {
+      //   await tx.notification.create({
+      //     data: {
+      //       userId: ride.driverId,
+      //       title: 'Passenger Cancelled',
+      //       message: `A passenger cancelled their booking. Reason: ${reason}`,
+      //     },
+      //   });
+      // }
+
+      // TODO: emit event "ride.passenger.cancelled"
+      return { message: 'Passenger removed from ride successfully' };
+    });
   }
 
 

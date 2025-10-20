@@ -40,11 +40,11 @@ export class RidesController {
   @UseGuards(JwtAuthGuard)
   @Post(':rideId/cancel')
   cancelRide(
-    @CurrentUser('id') driverId: string,
+    @CurrentUser('id') userId: string,
     @Param('rideId') rideId: string,
     @Body('reason') reason: string,
   ) {
-    return this.svc.cancelRide(driverId, rideId, reason);
+    return this.svc.cancelRide(userId, rideId, reason);
   }
 
   @Get(':rideId/code')
