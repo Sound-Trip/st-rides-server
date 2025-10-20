@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { PassengersService } from './passengers.service';
 import { CreateRequestDto, CreateScheduleDto } from './dto/update-location.dto';
 import { Query, Get } from '@nestjs/common';
@@ -42,7 +42,9 @@ export class PassengersController {
 
     @UseGuards(JwtAuthGuard)
     @Delete('ride-requests:id')
-    deleteRiderequest() { }
+    deleteRiderequest(@Param('id') requestID: string) { 
+        return this.svc.deleteRiderequest(requestID);
+    }
 
     @UseGuards(JwtAuthGuard)
     @Post('chatter')

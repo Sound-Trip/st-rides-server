@@ -117,6 +117,17 @@ export class PassengersService {
         return { request: schedules };
     }
 
+    async deleteRiderequest(requestID: string) { 
+        return this.prisma.$transaction(async tx => {
+            await tx.rideRequest.update({
+                where: {id: requestID},
+                data: {
+                    status: "CANCELLED",
+                }
+            })
+        })
+    }
+
     async chatter(passengerId: string, dto: any) {
 
         if (dto.vehicleType === VehicleType.KEKE) {
