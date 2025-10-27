@@ -1,14 +1,15 @@
 import { Module } from "@nestjs/common"
 import { RidesService } from "./rides.service"
 import { RidesController } from "./rides.controller"
+import { RideMatcherService } from "./ride-matcher.service"
+import { NotificationsModule } from "../notifications/notifications.module"
 // import { MatchingService } from "./matching.service"
-// import { NotificationsModule } from "../notifications/notifications.module"
 // import { WalletModule } from "../wallet/wallet.module"
 
 @Module({
-  // imports: [NotificationsModule, WalletModule],
+  imports: [NotificationsModule],
   controllers: [RidesController],
-  providers: [RidesService],
+  providers: [RidesService, RideMatcherService],
   exports: [RidesService],
 })
-export class RidesModule {}
+export class RidesModule { }

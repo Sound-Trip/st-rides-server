@@ -14,7 +14,7 @@ import { JunctionsModule } from "./junctions/junctions.module"
 // import { WalletModule } from "./wallet/wallet.module"
 // import { AdminModule } from "./admin/admin.module"
 // import { MaintenanceModule } from "./maintenance/maintenance.module"
-// import { NotificationsModule } from "./notifications/notifications.module"
+import { NotificationsModule } from "./notifications/notifications.module"
 // import { SchedulesModule } from "./schedules/schedules.module"
 import { CommonModule } from "./common/common.module"
 import { JwtAuthGuard } from "./auth/guards/jwt-auth.guard"
@@ -43,7 +43,7 @@ import { ThrottlerGuard } from "@nestjs/throttler"
     // WalletModule,
     // AdminModule,
     // MaintenanceModule,
-    // NotificationsModule,
+    NotificationsModule,
     // SchedulesModule,
   ],
   providers: [
